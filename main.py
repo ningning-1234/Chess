@@ -16,6 +16,9 @@ FPS = 60
 game = ChessGame()
 game.generate_board()
 
+# todo
+#  add movement for pawns
+
 while (run):
     events = pygame.event.get()
     mouse_events = {'pos':pygame.mouse.get_pos(), 'pressed':pygame.mouse.get_pressed()}
