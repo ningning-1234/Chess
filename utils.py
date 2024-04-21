@@ -33,3 +33,9 @@ def get_tile(pos, tile_lst):
         return None
     else:
         return tile_lst[pos[0]][pos[1]]
+
+def alg_to_grid(alg):
+    return (0,0)
+
+def grid_to_alg(grid):
+    return 'a1'

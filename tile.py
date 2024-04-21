@@ -25,6 +25,8 @@ class Tile(pygame.sprite.Sprite):
         self.border_color = None
         self.text = None
 
+        self.last_piece = None
+
         # print(self.rect)
         #self.rect = pygame.Rect(grid_pos[0]*TILE_SIZE, grid_pos[1]*TILE_SIZE, TILE_SIZE, TILE_SIZE)
 
@@ -32,7 +34,7 @@ class Tile(pygame.sprite.Sprite):
         return str(self.grid_pos)
 
     def onclick(self, game):
-        print(str(self)+' '+ str(self.piece) +' '+str(self.piece_counter))
+        print('tile: '+str(self)+' piece:'+str(self.piece) +' '+str(self.piece_counter))
         moved_piece = False
         #clicking on same tile
         if (game.clicked == self):
@@ -53,8 +55,33 @@ class Tile(pygame.sprite.Sprite):
                         game.promoted is None):
                         #move to new tile
                         print(self.grid_pos)
-                        game.clicked.piece.move(self.grid_pos)
-                        moved_piece = True
+                        p=game.clicked.piece
+                        # castling
+                        if (type(p) == King):
+                            if (p.castle_q_valid and self.grid_pos == p.castle_q_tile):
+                                get_tile(p.castle_q_rook.grid_pos, p.game.tile_lst).piece = None
+                                p.castle_q_rook.grid_pos = p.castle_q_rook_tile
+                                new_tile = get_tile(p.castle_q_rook_tile, p.game.tile_lst)
+                                new_tile.piece = p.castle_q_rook
+                                print('king castled 1')
+                            if (p.castle_k_valid and self.grid_pos == p.castle_k_tile):
+                                get_tile(p.castle_k_rook.grid_pos, p.game.tile_lst).piece = None
+                                p.castle_k_rook.grid_pos = p.castle_k_rook_tile
+                                new_tile = get_tile(p.castle_k_rook_tile, p.game.tile_lst)
+                                new_tile.piece = p.castle_k_rook
+                                print('king castled 2')
+
+                        #save the previous pieces of every tile
+                        game.save_last()
+                        #check if move is valid
+                        if(p.check_valid_move(self.grid_pos)):
+                            print('moving piece')
+                            p.move(self.grid_pos)
+                            moved_piece = True
+                        else:
+                            print('invalid move')
+                            game.reset_to_last()
+
                 # deselect
                 game.clicked.clicked = False
                 game.clicked = None

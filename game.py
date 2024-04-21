@@ -3,24 +3,61 @@ from tile import *
 from settings import *
 from utils import *
 
-def generate_pieces(game):
+
+piece_notation = {
+    'P': Pawn,
+    'R': Rook,
+    'N': Knight,
+    'B': Bishop,
+    'Q': Queen,
+    'K': King,
+}
+
+
+
+start_state = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+
+#decrepit
+def generate_pieces(game, board_state):
+    txt_lst = board_state.split(' ')
+    txt_lst[0] = txt_lst[0].split('/')
+    print(txt_lst)
+    row = 0
+    column = 0
+    for x in txt_lst[0]:
+        for y in x:
+            if (y.isnumeric()):
+                print('space_' + y, end=' ')
+                column = column + int(y)
+            else:
+                if(y.isupper()):
+                    player = 1
+                else:
+                    player = 2
+                piece = piece_notation[y.upper()]((column, row), player)
+                game.add_piece(piece)
+                column = column + 1
+                if(y=='k'):
+                    game.king_b = piece
+                if(y=='K'):
+                    game.king_w = piece
+
+                if(y=='P'):
+                    if(row!=6):
+                        piece.first_move=False
+
+
+        column = 0
+        row = row + 1
+        print()
+    '''
     # Generate pieces
     for pawn in range(0, 8):
-        pawn_w = Pawn((pawn, 1), 1)
+        pawn_w = Pawn((pawn, 6), 1)
         game.add_piece(pawn_w)
     for pawn in range(0, 8):
-        pawn_b = Pawn((pawn, 6), 2)
+        pawn_b = Pawn((pawn, 1), 2)
         game.add_piece(pawn_b)
-
-    # king_w = King((4, 7), 1)
-    # game.add_piece(king_w)
-    king_b = King((4, 0), 2)
-    game.add_piece(king_b)
-
-    queen_w = Queen((3, 7), 1)
-    game.add_piece(queen_w)
-    queen_b = Queen((3, 0), 2)
-    game.add_piece(queen_b)
 
     bishop1_w = Bishop((2, 7), 1)
     game.add_piece(bishop1_w)
@@ -48,6 +85,20 @@ def generate_pieces(game):
     game.add_piece(rook1_b)
     rook2_b = Rook((7, 0), 2)
     game.add_piece(rook2_b)
+
+    queen_w = Queen((3, 7), 1)
+    game.add_piece(queen_w)
+    queen_b = Queen((3, 0), 2)
+    game.add_piece(queen_b)
+
+    king_w = King((4, 7), 1, rook1_w, rook2_w)
+    game.add_piece(king_w)
+    king_b = King((4, 0), 2, rook1_b, rook2_b)
+    game.add_piece(king_b)
+    '''
+
+def check_FEN(fen_str):
+    return True
 
 button_images_w = {
     'rook':pygame.image.load('assets/Rook_W.png'),
@@ -116,9 +167,13 @@ class ChessGame():
         self.piece_lst = []
         self.white_piece_lst = []
         self.black_piece_lst = []
+        self.king_b = None
+        self.king_w = None
+
         self.piece_group = pygame.sprite.Group()
         self.captures_p1 = []
         self.captures_p2 = []
+        self.game_data = open('Game_Data.txt', 'w')
 
         #1 = white
         #2 = black
@@ -152,7 +207,7 @@ class ChessGame():
             self.white_piece_lst.append(piece)
         if (piece.player == 2):
             self.black_piece_lst.append(piece)
-        piece.game = self
+        piece.add_piece(self)
         self.tile_lst[piece.grid_pos[0]][piece.grid_pos[1]].piece = piece
 
     def generate_board(self):
@@ -163,21 +218,146 @@ class ChessGame():
                 t = Tile((tiles_x, tiles_y))
                 self.tile_lst[tiles_x].append(t)
                 self.tile_group.add(t)
-        generate_pieces(self)
+
+        self.king_w=None
+        self.king_b=None
+        global start_state
+        if(not check_FEN(start_state)):
+            start_state = DEFAULT_START_STATE
+        txt_lst = start_state.split(' ')
+        '''
+        txt_lst[0]: piece placement
+        txt_lst[1]: current turn
+        txt_lst[2]: castling
+        txt_lst[3]: enp
+        txt_lst[4]: half move
+        txt_lst[5]: full move
+        '''
+        txt_lst[0] = txt_lst[0].split('/')
+        print(txt_lst)
+
+        #temp storage for castling rooks
+        castle_w_q = None
+        castle_w_k = None
+        castle_b_q = None
+        castle_b_k = None
+        row = 0
+        for x in txt_lst[0]:
+            column = 0
+            for y in x:
+                if (y.isnumeric()):
+                    column = column + int(y)
+                else:
+                    if (y.isupper()):
+                        player = 1
+                    else:
+                        player = 2
+                    piece = piece_notation[y.upper()]((column, row), player)
+                    self.add_piece(piece)
+
+                    # king
+                    if (y == 'K'):
+                        self.king_w = piece
+                        if (row != 7 or column != 4):
+                            piece.first_move = False
+                        #castling
+                        if('K' in txt_lst[2]):
+                            piece.castle_k_eligible=True
+                        if('Q' in txt_lst[2]):
+                            piece.castle_q_eligible=True
+                    if (y == 'k'):
+                        self.king_b = piece
+                        if (row != 0 or column != 4):
+                            piece.first_move = False
+                        #castling
+                        if('k' in txt_lst[2]):
+                            piece.castle_k_eligible=True
+                        if('q' in txt_lst[2]):
+                            piece.castle_q_eligible = True
+
+                    # pawn
+                    if (y == 'P'):
+                        if (row != 6):
+                            piece.first_move = False
+                    if (y == 'p'):
+                        if (row != 1):
+                            piece.first_move = False
+
+                    # rook
+                    if (y == 'R'):
+                        #white queen side
+                        if(row == 7 and column == 0 and 'Q' in txt_lst[2]):
+                            castle_w_q = piece
+                        #white king side
+                        elif(row == 7 and column == 7 and 'K' in txt_lst[2]):
+                            castle_w_k = piece
+                        else:
+                            piece.first_move = False
+                    if (y == 'r'):
+                        #black queen side
+                        if(row == 0 and column == 0 and 'Q' in txt_lst[2]):
+                            castle_b_q = piece
+                        #black king side
+                        elif(row == 0 and column == 7 and 'K' in txt_lst[2]):
+                            castle_b_k = piece
+                        else:
+                            piece.first_move = False
+                    column = column + 1
+
+            row = row + 1
+            if(self.king_w is not None):
+                self.king_w.castle_q_rook = castle_w_q
+                self.king_w.castle_k_rook = castle_w_k
+            if(self.king_b is not None):
+                self.king_b.castle_q_rook = castle_b_q
+                self.king_b.castle_k_rook = castle_b_k
+
+        self.get_board_moves(self.current_turn)
+
+    def get_board_moves(self, turn):
+        for tile_x in self.tile_lst:
+            for tile in tile_x:
+                tile.piece_counter = []
         for piece in self.piece_lst:
-            piece.get_moves()
+            if(piece.active):
+                piece.move_lst = piece.get_moves(turn)
+        if(turn==1):
+            self.king_w.get_check()
+        else:
+            self.king_b.get_check()
 
     def change_turn(self):
         print('turn changed')
+        self.game_data = open('Game_Data.txt', 'a')
+        self.game_data.write(str(self.current_turn) + '\n')
+        self.game_data = open('Game_Data.txt', 'r')
+        print(self.game_data.read())
         if(self.current_turn == 1):
             self.current_turn = 2
         else:
             self.current_turn = 1
-        for x in self.tile_lst:
-            for y in x:
-                y.piece_counter = []
-        for piece in self.piece_lst:
-            piece.get_moves()
+        for tile_x in self.tile_lst:
+            for tile in tile_x:
+                tile.last_piece = None
+        self.get_board_moves(self.current_turn)
+
+    def save_last(self):
+        for tile_x in self.tile_lst:
+            for tile in tile_x:
+                tile.last_piece = tile.piece
+
+    #reset all pieces to previoius positions
+    def reset_to_last(self):
+        print('resetting')
+        for tile_x in self.tile_lst:
+            for tile in tile_x:
+                tile.piece = tile.last_piece
+                #reset the piece's position
+                if(tile.last_piece is not None):
+                    tile.last_piece.grid_pos = tile.grid_pos
+                    tile.last_piece.active = True
+                tile.last_piece = None
+        self.get_board_moves(self.current_turn)
 
     def update(self, events, mouse_events):
         # Convert mouse_pos to board_pos
@@ -216,6 +396,12 @@ class ChessGame():
         self.piece_group.update()
 
     def draw(self, surface):
+        if(self.current_turn==1):
+            surface.fill((200,200,200))
+        elif(self.current_turn==2):
+            surface.fill((50,50,50))
+        else:
+            surface.fill(BG_COLOR)
         self.tile_group.draw(self.board_surface)
         self.piece_group.draw(self.board_surface)
         surface.blit(self.board_surface,self.board_pos)
@@ -226,3 +412,11 @@ class ChessGame():
             if (self.promoted.player == 2):
                 surface.blit(self.promotion_ui_surface_b, self.promotion_ui_pos_b)
                 self.promotion_button_group_b.draw(self.promotion_ui_surface_b)
+        for piece in self.captures_p1:
+            image = piece.image
+            image = pygame.transform.scale(image, (30, 30))
+            surface.blit(image, (15, self.captures_p1.index(piece)*image.get_height()))
+        for piece in self.captures_p2:
+            image = piece.image
+            image = pygame.transform.scale(image, (30, 30))
+            surface.blit(image, (555, WIN_HEIGHT-self.captures_p2.index(piece)*image.get_height()-30))
