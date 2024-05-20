@@ -2,9 +2,10 @@ import pygame
 from tile import *
 from settings import *
 from utils import *
+from fileIO import *
+from datetime import datetime
 
-
-piece_notation = {
+fen_to_piece = {
     'P': Pawn,
     'R': Rook,
     'N': Knight,
@@ -13,89 +14,16 @@ piece_notation = {
     'K': King,
 }
 
+# piece_to_fen = {
+#     Pawn: 'P',
+#     Rook: 'R',
+#     Knight: 'N',
+#     Bishop: 'B',
+#     Queen: 'Q',
+#     King: 'K',
+# }
 
-
-start_state = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
-
-#decrepit
-def generate_pieces(game, board_state):
-    txt_lst = board_state.split(' ')
-    txt_lst[0] = txt_lst[0].split('/')
-    print(txt_lst)
-    row = 0
-    column = 0
-    for x in txt_lst[0]:
-        for y in x:
-            if (y.isnumeric()):
-                print('space_' + y, end=' ')
-                column = column + int(y)
-            else:
-                if(y.isupper()):
-                    player = 1
-                else:
-                    player = 2
-                piece = piece_notation[y.upper()]((column, row), player)
-                game.add_piece(piece)
-                column = column + 1
-                if(y=='k'):
-                    game.king_b = piece
-                if(y=='K'):
-                    game.king_w = piece
-
-                if(y=='P'):
-                    if(row!=6):
-                        piece.first_move=False
-
-
-        column = 0
-        row = row + 1
-        print()
-    '''
-    # Generate pieces
-    for pawn in range(0, 8):
-        pawn_w = Pawn((pawn, 6), 1)
-        game.add_piece(pawn_w)
-    for pawn in range(0, 8):
-        pawn_b = Pawn((pawn, 1), 2)
-        game.add_piece(pawn_b)
-
-    bishop1_w = Bishop((2, 7), 1)
-    game.add_piece(bishop1_w)
-    bishop2_w = Bishop((5, 7), 1)
-    game.add_piece(bishop2_w)
-    bishop1_b = Bishop((2, 0), 2)
-    game.add_piece(bishop1_b)
-    bishop2_b = Bishop((5, 0), 2)
-    game.add_piece(bishop2_b)
-
-    knight1_w = Knight((1, 7), 1)
-    game.add_piece(knight1_w)
-    knight2_w = Knight((6, 7), 1)
-    game.add_piece(knight2_w)
-    knight1_b = Knight((1, 0), 2)
-    game.add_piece(knight1_b)
-    knight2_b = Knight((6, 0), 2)
-    game.add_piece(knight2_b)
-
-    rook1_w = Rook((0, 7), 1)
-    game.add_piece(rook1_w)
-    rook2_w = Rook((7, 7), 1)
-    game.add_piece(rook2_w)
-    rook1_b = Rook((0, 0), 2)
-    game.add_piece(rook1_b)
-    rook2_b = Rook((7, 0), 2)
-    game.add_piece(rook2_b)
-
-    queen_w = Queen((3, 7), 1)
-    game.add_piece(queen_w)
-    queen_b = Queen((3, 0), 2)
-    game.add_piece(queen_b)
-
-    king_w = King((4, 7), 1, rook1_w, rook2_w)
-    game.add_piece(king_w)
-    king_b = King((4, 0), 2, rook1_b, rook2_b)
-    game.add_piece(king_b)
-    '''
+start_state = str(read_file('assets/Start_State'))
 
 def check_FEN(fen_str):
     return True
@@ -144,7 +72,6 @@ class PromotionButton(pygame.sprite.Sprite):
     def draw(self):
         pygame.draw.rect(self.image, (0, 0, 0), (0, 0, TILE_SIZE, TILE_SIZE), 2)
 
-
 bishop_w_promotion = PromotionButton((0, 0), 1, 'bishop')
 knight_w_promotion = PromotionButton((TILE_SIZE*1, 0), 1, 'knight')
 rook_w_promotion = PromotionButton((TILE_SIZE*2, 0), 1, 'rook')
@@ -173,7 +100,7 @@ class ChessGame():
         self.piece_group = pygame.sprite.Group()
         self.captures_p1 = []
         self.captures_p2 = []
-        self.game_data = open('Game_Data.txt', 'w')
+        self.board_state = ''
 
         #1 = white
         #2 = black
@@ -199,6 +126,7 @@ class ChessGame():
                         knight_b_promotion,
                         rook_b_promotion,
                         queen_b_promotion)
+        self.move_notation = []
 
     def add_piece(self, piece):
         self.piece_lst.append(piece)
@@ -252,7 +180,7 @@ class ChessGame():
                         player = 1
                     else:
                         player = 2
-                    piece = piece_notation[y.upper()]((column, row), player)
+                    piece = fen_to_piece[y.upper()]((column, row), player)
                     self.add_piece(piece)
 
                     # king
@@ -279,9 +207,21 @@ class ChessGame():
                     if (y == 'P'):
                         if (row != 6):
                             piece.first_move = False
+                        if (txt_lst[3] != '-'):
+                            print('enp2')
+                            if (notation_to_grid_pos(txt_lst[3]) == (row, column)):
+                                print('enp3')
+                                piece.en_passant = True
+                                print(str(piece)+' enp')
                     if (y == 'p'):
                         if (row != 1):
                             piece.first_move = False
+                        if (txt_lst[3] != '-'):
+                            print('enp2')
+                            if (notation_to_grid_pos(txt_lst[3]) == (row, column)):
+                                print('enp3')
+                                piece.en_passant = True
+                                print(str(piece)+' enp')
 
                     # rook
                     if (y == 'R'):
@@ -303,7 +243,6 @@ class ChessGame():
                         else:
                             piece.first_move = False
                     column = column + 1
-
             row = row + 1
             if(self.king_w is not None):
                 self.king_w.castle_q_rook = castle_w_q
@@ -311,6 +250,11 @@ class ChessGame():
             if(self.king_b is not None):
                 self.king_b.castle_q_rook = castle_b_q
                 self.king_b.castle_k_rook = castle_b_k
+
+        if(txt_lst[1] == 'w'):
+            self.current_turn = 1
+        else:
+            self.current_turn = 2
 
         self.get_board_moves(self.current_turn)
 
@@ -328,10 +272,6 @@ class ChessGame():
 
     def change_turn(self):
         print('turn changed')
-        self.game_data = open('Game_Data.txt', 'a')
-        self.game_data.write(str(self.current_turn) + '\n')
-        self.game_data = open('Game_Data.txt', 'r')
-        print(self.game_data.read())
         if(self.current_turn == 1):
             self.current_turn = 2
         else:
@@ -340,6 +280,7 @@ class ChessGame():
             for tile in tile_x:
                 tile.last_piece = None
         self.get_board_moves(self.current_turn)
+        self.board_to_fen()
 
     def save_last(self):
         for tile_x in self.tile_lst:
@@ -358,6 +299,76 @@ class ChessGame():
                     tile.last_piece.active = True
                 tile.last_piece = None
         self.get_board_moves(self.current_turn)
+
+    def board_to_fen(self):
+        '''
+        txt_lst[0]: piece placement
+        txt_lst[1]: current turn
+        txt_lst[2]: castling
+        txt_lst[3]: enp
+        txt_lst[4]: half move
+        txt_lst[5]: full move
+        '''
+        fen = ''
+        empty_tile_count = 0
+        enp = None
+        for tile_x in range(0, len(self.tile_lst)):
+            for tile in range(0, len(self.tile_lst)):
+                if(get_tile((tile, tile_x), self.tile_lst).piece is not None):
+                    if (empty_tile_count != 0):
+                        fen = fen + str(empty_tile_count)
+                        empty_tile_count = 0
+                    if(type(get_tile((tile, tile_x), self.tile_lst).piece) == Pawn):
+                        # print('enp')
+                        if(get_tile((tile, tile_x), self.tile_lst).piece.en_passant == True):
+                            enp = get_tile((tile, tile_x), self.tile_lst).grid_pos
+                    fen = fen + get_tile((tile, tile_x), self.tile_lst).piece.notation
+                else:
+                    empty_tile_count = empty_tile_count + 1
+            if (empty_tile_count != 0):
+                fen = fen + str(empty_tile_count)
+                empty_tile_count = 0
+            if(tile_x != len(self.tile_lst)-1):
+                fen = fen + '/'
+
+        if(self.current_turn == 1):
+            fen = fen + ' w '
+        else:
+            fen = fen + ' b '
+
+        board_castle = False
+        if (self.king_w.castle_k_eligible == True):
+            fen = fen + 'K'
+            board_castle = True
+        if (self.king_w.castle_q_eligible == True):
+            fen = fen + 'Q'
+            board_castle = True
+        if (self.king_b.castle_k_eligible == True):
+            fen = fen + 'k'
+            board_castle = True
+        if (self.king_b.castle_q_eligible == True):
+            fen = fen + 'q'
+            board_castle = True
+        if (board_castle == False):
+            fen = fen + '-'
+
+        if (enp is not None):
+            fen = fen + ' ' + grid_to_notation_pos(enp[0], enp[1])
+        else:
+            fen = fen + ' -'
+
+        fen = fen + ' 0'
+        fen = fen + ' 1'
+        print(fen)
+        return fen
+
+    def save_fen(self):
+        fen = datetime.now()
+        fen = fen.strftime('%m-%d-%Y, %H-%M-%S')
+        moves = ''
+        for move in self.move_notation:
+            moves = moves + move + '\n'
+        save_to_file('fen/' + str(fen), moves + self.board_to_fen())
 
     def update(self, events, mouse_events):
         # Convert mouse_pos to board_pos

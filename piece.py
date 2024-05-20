@@ -29,13 +29,17 @@ rook_black = pygame.image.load('assets/Rook_B.png')
 
 
 class Piece(pygame.sprite.Sprite):
-    def __init__(self, grid_pos, player, name):
+    def __init__(self, grid_pos, player, name, notation):
         super().__init__()
         self.game = None
         self.image = pawn_white
         self.rect = self.image.get_rect()
         self.grid_pos = grid_pos
         self.player = player
+        if(self.player == 1):
+            self.notation = notation.upper()
+        if (self.player == 2):
+            self.notation = notation.lower()
         self.name = name
         #whether this piece is currently on the board
         self.active = True
@@ -53,6 +57,36 @@ class Piece(pygame.sprite.Sprite):
 
     def captured(self, piece):
         print('captured by ' + str(piece))
+
+    def can_move_to(self, pos, ignore_type=0, ignore_path=0):
+        '''
+        Check if piece can move to given position
+        :param pos: the position to move to
+        :param ignore_type: the types of pieces to ignore
+                                0 to not ignore anything
+                                1 to ignore pieces of the same type and player
+                                2 to ignore pieces of the same player
+                                3 to ignore all pieces
+        :param ignore_path: the types of pieces to ignore in the path
+                                0 to not ignore anything
+                                1 to ignore pieces of opposite player in path
+                                2 to ignore pieces of the same player in path
+                                3 to ignore all pieces in path
+
+        :return:
+        '''
+        tile_piece = get_tile(pos, self.game.tile_lst).piece
+        if (ignore_type == 0):
+            if tile_piece is not None:
+                return False
+        elif(ignore_type==1):
+            if(tile_piece is not None and tile_piece.notation != self.notation):
+                return False
+        elif(ignore_type==2):
+            if(tile_piece is not None and tile_piece.player != self.player):
+                return False
+
+        return True
 
     def get_moves(self, turn):
         return []
@@ -120,6 +154,18 @@ class Piece(pygame.sprite.Sprite):
                     self.game.white_piece_lst.remove(p)
                 self.game.piece_lst.remove(p)
                 self.game.piece_group.remove(p)
+
+        move_notation = self.notation.upper() + grid_to_notation_pos(self.grid_pos[0], self.grid_pos[1])
+        for piece in self.game.piece_lst:
+            if (piece.notation == self.notation and piece != self):
+                print('same piece')
+                print(new_tile.grid_pos)
+                if(piece.can_move_to(new_tile.grid_pos, ignore_type=1)):
+                    print('same move')
+                    move_notation = 'test' + str(move_notation)
+                    break
+        self.game.move_notation.append(self.notation.upper() + grid_to_notation_pos(self.grid_pos[0], self.grid_pos[1]))
+        print(move_notation)
         self.game.change_turn()
 
     def highlight_moves(self):
@@ -165,7 +211,7 @@ class Piece(pygame.sprite.Sprite):
 
 class Pawn(Piece):
     def __init__(self, grid_pos, player):
-        super().__init__(grid_pos, player, 'pawn')
+        super().__init__(grid_pos, player, 'pawn', 'P')
         if (player == 1):
             self.image_default = pawn_white
             self.image_enp = pawn_white_e
@@ -179,7 +225,7 @@ class Pawn(Piece):
         self.en_passant_capture = None
 
     def __str__(self):
-        return super().__str__()+' enp:' + str(self.en_passant_capture)
+        return super().__str__()+' enp:' + str(self.en_passant)+' enp cap:' + str(self.en_passant_capture)
 
     def get_moves(self, turn):
         self.en_passant_capture = None
@@ -321,6 +367,8 @@ class Pawn(Piece):
 
         if (self.game.promoted is None):
             self.game.change_turn()
+        self.game.move_notation.append(grid_to_notation_pos(self.grid_pos[0], self.grid_pos[1]))
+        print(grid_to_notation_pos(self.grid_pos[0], self.grid_pos[1]))
 
     def promotion(self, piece='queen'):
         # remove pawn
@@ -356,7 +404,7 @@ class Pawn(Piece):
 
 class King(Piece):
     def __init__(self, grid_pos, player):
-        super().__init__(grid_pos, player, 'king')
+        super().__init__(grid_pos, player, 'king', 'K')
         if (player == 1):
             self.image = king_white
         if (player == 2):
@@ -390,7 +438,7 @@ class King(Piece):
         self.castle_k_tiles = [get_tile((self.grid_pos[0] + 1, self.grid_pos[1]), self.game.tile_lst),
                                get_tile((self.grid_pos[0] + 2, self.grid_pos[1]), self.game.tile_lst)]
     def check_castle(self):
-        print(str(self.player) + ' castle check')
+        print(str(self) + ' castle check')
         self.castle_q_valid = False
         self.castle_k_valid = False
 
@@ -439,8 +487,8 @@ class King(Piece):
             self.castle_k_valid = False
 
     def move(self, new_pos):
-        super().move(new_pos)
         self.first_move = False
+        super().move(new_pos)
 
     def get_check(self):
         t = get_tile(self.grid_pos, self.game.tile_lst)
@@ -481,11 +529,17 @@ class King(Piece):
 
 class Queen(Piece):
     def __init__(self, grid_pos, player):
-        super().__init__(grid_pos, player, 'queen')
+        super().__init__(grid_pos, player, 'queen', 'Q')
         if (player == 1):
             self.image = queen_white
+            self.notation = 'Q'
         if (player == 2):
             self.image = queen_black
+            self.notation = 'q'
+
+    def can_move_to(self, pos, ignore_type=0, ignore_path=0):
+        if(super().can_move_to(pos, ignore_type, ignore_path)==False):
+            return False
 
     def get_moves(self, turn):
         move_lst = []
@@ -551,11 +605,15 @@ class Queen(Piece):
 
 class Bishop(Piece):
     def __init__(self, grid_pos, player):
-        super().__init__(grid_pos, player, 'bishop')
+        super().__init__(grid_pos, player, 'bishop', 'B')
         if (player == 1):
             self.image = bishop_white
         if (player == 2):
             self.image = bishop_black
+
+    def can_move_to(self, pos, ignore_type=0, ignore_path=0):
+        if(super().can_move_to(pos, ignore_type, ignore_path)==False):
+            return False
 
     def get_moves(self, turn):
         move_lst = []
@@ -594,11 +652,16 @@ class Bishop(Piece):
 
 class Knight(Piece):
     def __init__(self, grid_pos, player):
-        super().__init__(grid_pos, player, 'knight')
+        super().__init__(grid_pos, player, 'knight', 'N')
         if (player == 1):
             self.image = knight_white
         if (player == 2):
             self.image = knight_black
+
+    def can_move_to(self, pos, ignore_type=0, ignore_path=0):
+        if(super().can_move_to(pos, ignore_type, ignore_path)==False):
+            return False
+
 
     def get_moves(self, turn):
         move_lst = []
@@ -624,7 +687,7 @@ class Knight(Piece):
 
 class Rook(Piece):
     def __init__(self, grid_pos, player):
-        super().__init__(grid_pos, player, 'rook')
+        super().__init__(grid_pos, player, 'rook', 'R')
         if (player == 1):
             self.image = rook_white
         if (player == 2):
@@ -632,8 +695,32 @@ class Rook(Piece):
         self.first_move = True
 
     def move(self, new_pos):
-        super().move(new_pos)
         self.first_move = False
+        super().move(new_pos)
+
+    def can_move_to(self, pos, ignore_type=0, ignore_path=0):
+        if(super().can_move_to(pos, ignore_type, ignore_path)==False):
+            return False
+
+        if(pos[0]!=self.grid_pos[0] and pos[1]!=self.grid_pos[1]):
+            return False
+
+        path_to_pos = []
+        #todo:
+        # get the path from current pos to the given pos
+
+        for _pos in path_to_pos:
+            tile_piece = get_tile(_pos, self.game.tile_lst).piece
+            if(ignore_path==0):
+                if(tile_piece is not None):
+                    return False
+            elif(ignore_path==1):
+                if(tile_piece is not None and tile_piece.player==self.player):
+                    return False
+            elif(ignore_path==2):
+                if(tile_piece is not None and tile_piece.player!=self.player):
+                    return False
+        return True
 
     def get_moves(self, turn):
         move_lst = []

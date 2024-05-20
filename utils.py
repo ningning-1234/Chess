@@ -1,3 +1,6 @@
+from settings import NOTATION_TO_GRID, GRID_TO_NOTATION
+
+
 def between_nums(num1, num2, bet_num, include=(True, False)):
     '''
     Checks if bet_num is between num1 and num2.
@@ -34,8 +37,10 @@ def get_tile(pos, tile_lst):
     else:
         return tile_lst[pos[0]][pos[1]]
 
-def alg_to_grid(alg):
-    return (0,0)
+def notation_to_grid_pos(pos):
+    x = pos[0]
+    y = pos[1]
+    return (8-int(y),NOTATION_TO_GRID[x])
 
-def grid_to_alg(grid):
-    return 'a1'
+def grid_to_notation_pos(x, y):
+    return GRID_TO_NOTATION[x] + str(8-y)

@@ -75,7 +75,7 @@ class Tile(pygame.sprite.Sprite):
                         game.save_last()
                         #check if move is valid
                         if(p.check_valid_move(self.grid_pos)):
-                            print('moving piece')
+                            print('moving piece '+str(p))
                             p.move(self.grid_pos)
                             moved_piece = True
                         else:
