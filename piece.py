@@ -197,6 +197,8 @@ class Piece(pygame.sprite.Sprite):
                 else:
                     t.color = OPPONENT_CAPTURE_COLOR
 
+
+
             self.game.highlighted_tiles.append(self.game.tile_lst[pos[0]][pos[1]])
 
     def add_piece(self,game):
